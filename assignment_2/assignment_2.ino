@@ -10,7 +10,7 @@ extern "C" {
 #define SQUARE_WAVE_INPUT_PIN 34   // Measure pin 1
 #define SQUARE_WAVE_INPUT_PIN2 33  // Measure pin 2
 #define ANALOG_PIN 34              // Analogue input pin
-#define ERROR_LED_PIN 3            // LED error pin
+#define ERROR_LED_PIN 14           // LED error pin
 #define MAX_ANALOG_READING 4095    // Maximum reading for a 12-bit ADC
 #define NUM_READINGS 10            // Number of readings to average
 #define LED_PIN 13                 // Toggle LED pin
