@@ -1,45 +1,38 @@
-#include <Arduino.h>
+extern "C" {
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/timers.h"
-#include "freertos/event_groups.h"
+#include "esp32/rom/ets_sys.h"  // For ets_delay_us()
+}
 
-// Define the GPIO pin for signal output
 #define SIGNAL_PIN 2
 
 void setup() {
-  // Initialize the serial port for debugging
   Serial.begin(115200);
-  while (!Serial) { ; }  // Wait for port to connect
-
-  // Initialize the digital pin as an output
   pinMode(SIGNAL_PIN, OUTPUT);
-
-  // Create a FreeRTOS task for outputting the digital signal
   xTaskCreate(
-    digitalSignalTask,        // Task function
-    "Digital Signal Output",  // Name of the task
-    10000,                    // Stack size (bytes)
-    NULL,                     // Task input parameter
-    1,                        // Priority
-    NULL                      // Task handle
-  );
+    digitalSignalTask,
+    "Digital Signal Output",
+    10000,
+    NULL,
+    1,
+    NULL);
 }
 
 void loop() {
-  // The loop function is intentionally left empty
+  // Intentionally empty.
 }
 
-// FreeRTOS task for outputting the digital signal
 void digitalSignalTask(void *parameter) {
-  for (;;) {  // Infinite loop
+  for (;;) {
     digitalWrite(SIGNAL_PIN, HIGH);
-    vTaskDelay(pdMS_TO_TICKS(180));  // 180μs HIGH
+    ets_delay_us(180);  // 180μs HIGH
     digitalWrite(SIGNAL_PIN, LOW);
-    vTaskDelay(pdMS_TO_TICKS(40));  // 40μs LOW
+    ets_delay_us(40);  // 40μs LOW
     digitalWrite(SIGNAL_PIN, HIGH);
-    vTaskDelay(pdMS_TO_TICKS(530));  // 530μs HIGH
+    ets_delay_us(530);  // 530μs HIGH
     digitalWrite(SIGNAL_PIN, LOW);
-    vTaskDelay(pdMS_TO_TICKS(3250));  // 3.25ms LOW
+    ets_delay_us(3250);  // 3.25ms LOW
+
+    vTaskDelay(1);
   }
 }
