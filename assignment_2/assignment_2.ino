@@ -65,10 +65,10 @@ void IRAM_ATTR onRisingEdge2() {
 }
 
 void CPU_work(int time) {
-  unsigned long endTime = millis() + time;
-  while (millis() < endTime) {
-    volatile int dummy = 0;
-    dummy++;
+  unsigned long loopCount = time * 1000;  // Converts time to run loop in ms (assuming each loop is 1 us)
+  volatile int dummy = 0;
+  for (long i = 0; i < loopCount; i++) {
+    dummy += i;
   }
 }
 
