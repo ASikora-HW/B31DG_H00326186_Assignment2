@@ -6,7 +6,11 @@ extern "C" {
 
 #define SIGNAL_PIN 2
 #define SQUARE_WAVE_INPUT_PIN 34   // Use a GPIO pin that supports interrupts
-#define SQUARE_WAVE_INPUT_PIN2 35  // Example pin, choose one that fits your setup
+#define SQUARE_WAVE_INPUT_PIN2 33  // Example pin, choose one that fits your setup
+#define ANALOG_PIN 34              // Example analog pin, adjust based on your ESP32 board
+#define ERROR_LED_PIN 3            // LED pin to indicate error
+#define MAX_ANALOG_READING 4095    // Maximum reading for a 12-bit ADC, adjust if different
+#define NUM_READINGS 10
 
 volatile unsigned long lastRiseTime = 0;
 volatile unsigned long currentRiseTime = 0;
@@ -17,6 +21,11 @@ volatile unsigned long lastRiseTime2 = 0;
 volatile unsigned long currentRiseTime2 = 0;
 volatile boolean newFrequencyReady2 = false;
 volatile float measuredFrequency2 = 0.0;
+
+int readings[NUM_READINGS];  // Circular buffer for readings
+int readIndex = 0;           // Current position in the buffer
+long total = 0;              // Sum of the readings
+float average = 0;           // Running average
 
 void IRAM_ATTR onRisingEdge() {
   lastRiseTime = currentRiseTime;
@@ -43,10 +52,16 @@ void setup() {
   pinMode(SIGNAL_PIN, OUTPUT);
   xTaskCreate(digitalSignalTask, "Digital Signal Output", 10000, NULL, 1, NULL);
   xTaskCreate(frequencyMeasurementTask, "Frequency Measurement", 2048, NULL, 2, NULL);
+  xTaskCreate(sampleAnalogTask, "Sample Analog Input", 2048, NULL, 1, NULL);
   pinMode(SQUARE_WAVE_INPUT_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(SQUARE_WAVE_INPUT_PIN), onRisingEdge, RISING);
   pinMode(SQUARE_WAVE_INPUT_PIN2, INPUT);
   attachInterrupt(digitalPinToInterrupt(SQUARE_WAVE_INPUT_PIN2), onRisingEdge2, RISING);
+  pinMode(ERROR_LED_PIN, OUTPUT);
+  pinMode(ANALOG_PIN, INPUT);
+  for (int thisReading = 0; thisReading < NUM_READINGS; thisReading++) {
+    readings[thisReading] = 0;
+  }
 }
 
 void loop() {
@@ -81,5 +96,40 @@ void frequencyMeasurementTask(void *parameter) {
       Serial.println(measuredFrequency2);
     }
     vTaskDelay(pdMS_TO_TICKS(8));
+  }
+}
+
+void sampleAnalogTask(void *parameter) {
+  for (;;) {
+    // Subtract the last reading:
+    total = total - readings[readIndex];
+    // Read from the sensor:
+    readings[readIndex] = analogRead(ANALOG_PIN);
+    // Add the reading to the total:
+    total = total + readings[readIndex];
+    // Advance to the next position in the array:
+    readIndex = readIndex + 1;
+
+    // If we're at the end of the array...
+    if (readIndex >= NUM_READINGS) {
+      // ...wrap around to the beginning:
+      readIndex = 0;
+    }
+
+    // Calculate the average:
+    average = total / NUM_READINGS;
+    // Check if the average exceeds half the maximum range:
+    if (average > MAX_ANALOG_READING / 2) {
+      digitalWrite(ERROR_LED_PIN, HIGH);  // Turn on the error LED
+    } else {
+      digitalWrite(ERROR_LED_PIN, LOW);  // Turn off the error LED
+    }
+
+    // Debug output to serial (optional):
+    Serial.print("Average: ");
+    Serial.println(average);
+
+    // Wait for a bit before sampling again:
+    vTaskDelay(pdMS_TO_TICKS(20));  // 20ms delay for 50Hz rate
   }
 }
