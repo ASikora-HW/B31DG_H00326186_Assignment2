@@ -50,9 +50,12 @@ void IRAM_ATTR onRisingEdge2() {
 void setup() {
   Serial.begin(9600);
   pinMode(SIGNAL_PIN, OUTPUT);
+
   xTaskCreate(digitalSignalTask, "Digital Signal Output", 10000, NULL, 1, NULL);
   xTaskCreate(frequencyMeasurementTask, "Frequency Measurement", 2048, NULL, 2, NULL);
   xTaskCreate(sampleAnalogTask, "Sample Analog Input", 2048, NULL, 1, NULL);
+  xTaskCreate(logFrequencyTask, "Log Frequency", 2048, NULL, 3, NULL);
+
   pinMode(SQUARE_WAVE_INPUT_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(SQUARE_WAVE_INPUT_PIN), onRisingEdge, RISING);
   pinMode(SQUARE_WAVE_INPUT_PIN2, INPUT);
@@ -87,13 +90,13 @@ void frequencyMeasurementTask(void *parameter) {
   for (;;) {
     if (newFrequencyReady) {
       newFrequencyReady = false;  // Reset the flag
-      Serial.print("Measured Frequency 1: ");
-      Serial.println(measuredFrequency);
+      //Serial.print("Measured Frequency 1: ");
+      //Serial.println(measuredFrequency);
     }
     if (newFrequencyReady2) {
       newFrequencyReady2 = false;  // Reset the flag
-      Serial.print("Measured Frequency 2: ");
-      Serial.println(measuredFrequency2);
+      //Serial.print("Measured Frequency 2: ");
+      //Serial.println(measuredFrequency2);
     }
     vTaskDelay(pdMS_TO_TICKS(8));
   }
@@ -126,10 +129,26 @@ void sampleAnalogTask(void *parameter) {
     }
 
     // Debug output to serial (optional):
-    Serial.print("Average: ");
-    Serial.println(average);
+    //Serial.print("Average: ");
+    //Serial.println(average);
 
     // Wait for a bit before sampling again:
     vTaskDelay(pdMS_TO_TICKS(20));  // 20ms delay for 50Hz rate
+  }
+}
+
+void logFrequencyTask(void *parameter) {
+  for (;;) {
+    // Scale the frequencies. Assuming the full scale is 333Hz to 1000Hz.
+    int scaledFreq1 = map(constrain((int)measuredFrequency, 333, 1000), 333, 1000, 0, 99);
+    int scaledFreq2 = map(constrain((int)measuredFrequency2, 500, 1000), 500, 1000, 0, 99);
+
+    // Log the scaled frequencies to the serial port
+    Serial.print(scaledFreq1);
+    Serial.print(",");
+    Serial.println(scaledFreq2);
+
+    // Wait 200ms before the next log
+    vTaskDelay(pdMS_TO_TICKS(200));
   }
 }
